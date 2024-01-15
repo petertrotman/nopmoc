@@ -130,12 +130,13 @@ if __name__ == '__main__':
 
     parser.add_argument(
         'sqlite_db',
-        help='file path to the sqlite database to be greated'
+        help='file path to the sqlite database to be created'
     )
     parser.add_argument(
         'search_directories',
         nargs='+',
-        help='list of directories to search for kicad symbols libraries'
+        help='list of directories in which to search '
+             'for kicad symbols libraries'
     )
 
     args = parser.parse_args()
