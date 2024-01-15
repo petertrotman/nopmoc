@@ -15,8 +15,8 @@ __location__ = os.path.realpath(
 
 def init_db(db: sqlite3.Connection) -> None:
     """Initialise the database at the given location with
-    the schema defined in sql/schema.sql"""
-    with open(os.path.join(__location__, 'sql/schema.sql')) as f:
+    the schema defined in schema.sql"""
+    with open(os.path.join(__location__, 'schema.sql')) as f:
         sql_script = f.read()
         db.executescript(sql_script)
 
@@ -144,20 +144,20 @@ if __name__ == '__main__':
     lib_paths = list(libraries_paths(*args.search_directories))
 
     with sqlite3.connect(args.sqlite_db) as db:
-        print(f'Initialising database {args.sqlite_db}...', end='')
+        print(f'Initialising database {args.sqlite_db}...', end=' ')
         init_db(db)
-        print(' success', end='\n\n')
+        print('success', end='\n\n')
 
         for i, library_path in enumerate(lib_paths):
             print(
                 f'[{i+1}/{len(lib_paths)}]',
                 f'Processing library {library_path}...',
-                end=''
+                end=' '
             )
             lib = SymbolLib.from_file(library_path)
             _symbols_added = insert_library(lib, db)
 
-            print(f' success, {_symbols_added} symbols added')
+            print(f'success, {_symbols_added} symbols added')
             symbols_added += _symbols_added
 
     print(
