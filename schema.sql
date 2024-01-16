@@ -12,7 +12,7 @@ properties(
 create table if not exists
 pins(
     symbol_rowid references symbols(rowid),
-    number integer,
+    number text,
     name text,
     electrical_type text,
     is_alternate bool default false

@@ -7,12 +7,12 @@ export default defineConfig({
 		include: ['src/**/*.{test,spec}.{js,ts}']
 	},
 	optimizeDeps: {
-		exclude: ['@sqlite.org/sqlite-wasm'],
+		exclude: ['@sqlite.org/sqlite-wasm']
 	},
 	server: {
 		headers: {
 			'Cross-Origin-Opener-Policy': 'same-origin',
-			'Cross-Origin-Embedder-Policy': 'require-corp',
-		},
-	},
+			'Cross-Origin-Embedder-Policy': 'require-corp'
+		}
+	}
 });

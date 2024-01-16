@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 from collections.abc import Iterable
 from itertools import chain
 from kiutils.symbol import SymbolLib, Symbol, SymbolPin

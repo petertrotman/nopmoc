@@ -1,5 +1,7 @@
-<script>
+<script lang="ts">
 	import '../app.pcss';
 </script>
 
-<slot />
+<div class="container prose mx-auto px-4">
+	<slot />
+</div>
