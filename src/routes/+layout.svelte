@@ -9,7 +9,7 @@
   </a>
   <ul class="menu menu-horizontal px-1">
 	<li><a href='/lookup'>Lookup</a></li>
-	<li>
+	<li class="dropdown">
 	  <details>
 	    <summary>Browser</summary>
 		<ul class="p-2 bg-primary rounded-t-none">
