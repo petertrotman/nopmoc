@@ -24,16 +24,17 @@ def init_db(db: sqlite3.Connection) -> None:
         CREATE TABLE IF NOT EXISTS
         symbols(
             name TEXT,
-            library TEXT
+            library TEXT,
+            reference TEXT,
+            value TEXT,
+            footprint TEXT,
+            footprint_filter TEXT,
+            datasheet TEXT,
+            keywords TEXT,
+            description TEXT
         );
         CREATE TABLE IF NOT EXISTS
-        symbol_properties(
-            symbol_rowid references symbols(rowid),
-            key TEXT,
-            value TEXT
-        );
-        CREATE TABLE IF NOT EXISTS
-        symbol_pins(
+        pins(
             symbol_rowid REFERENCES symbols(rowid),
             number TEXT,
             name TEXT,
@@ -47,12 +48,6 @@ def init_db(db: sqlite3.Connection) -> None:
             description TEXT,
             tags TEXT,
             pads INTEGER
-        );
-        CREATE TABLE IF NOT EXISTS
-        footprint_properties(
-            footprint_rowid REFERENCES footprints(rowid),
-            key TEXT,
-            value TEXT
         );
     """)
 
@@ -79,26 +74,52 @@ def insert_symbol(
 
     cur = db.cursor()
 
-    # Insert symbol
-    cur.execute(
-        """INSERT INTO symbols(name, library) VALUES (?, ?);""",
-        (symbol.entryName, library_name)
+    wanted_properties = (
+        "Reference",
+        "Value",
+        "Footprint",
+        "Datasheet",
+        "ki_keywords",
+        "ki_description",
+        "ki_fp_filters",
     )
-    symbol_rowid = cur.lastrowid
 
-    # Insert symbol properties
-    cur.executemany(
-        """
-        INSERT INTO symbol_properties(symbol_rowid, key, value)
-        VALUES (?, ?, ?);
-        """,
-        ((symbol_rowid, p.key, p.value) for p in symbol.properties)
-    )
+    symbol_properties = {
+        p.key: p.value
+        for p in symbol.properties
+        if p.key in wanted_properties
+    }
+
+    # Insert symbol
+    cur.execute("""
+    INSERT INTO symbols(
+        name,
+        library,
+        reference,
+        value,
+        footprint,
+        footprint_filter,
+        datasheet,
+        keywords,
+        description
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
+    """, (
+        symbol.entryName,
+        library_name,
+        symbol_properties.get("Reference"),
+        symbol_properties.get("Value"),
+        symbol_properties.get("Footprint"),
+        symbol_properties.get("ki_fp_filter"),
+        symbol_properties.get("Datasheet"),
+        symbol_properties.get("ki_keywords"),
+        symbol_properties.get("ki_description"),
+    ))
+    symbol_rowid = cur.lastrowid
 
     # Insert pins
     cur.executemany(
         """
-        INSERT INTO symbol_pins(
+        INSERT INTO pins(
             symbol_rowid,
             number,
             name,
@@ -116,7 +137,7 @@ def insert_symbol(
     # Insert alternate pins
     cur.executemany(
         """
-        INSERT INTO symbol_pins(
+        INSERT INTO pins(
             symbol_rowid,
             number,
             name,
@@ -150,9 +171,7 @@ def insert_footprint(
         db: sqlite3.Connection):
     """Insert the footprint into the database."""
 
-    cur = db.cursor()
-
-    cur.execute("""
+    db.execute("""
         INSERT INTO footprints(name, library, description, tags, pads)
         VALUES (?, ?, ?, ?, ?);
     """, (
@@ -165,13 +184,6 @@ def insert_footprint(
             if isinstance(p.number, int) or len(p.number) > 0
         ))
     ))
-
-    footprint_rowid = cur.lastrowid
-
-    cur.executemany("""
-        INSERT INTO footprint_properties(footprint_rowid, key, value)
-        VALUES (?, ?, ?);
-    """, ((footprint_rowid, p.key, p.value) for p in footprint.properties))
 
 
 if __name__ == '__main__':
