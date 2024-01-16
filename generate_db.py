@@ -3,6 +3,7 @@
 from collections.abc import Iterable
 from itertools import chain
 from kiutils.symbol import SymbolLib, Symbol, SymbolPin
+from pathlib import Path
 import argparse
 import os
 import sqlite3
@@ -18,22 +19,9 @@ __location__ = os.path.realpath(
 def init_db(db: sqlite3.Connection) -> None:
     """Initialise the database at the given location with
     the schema defined in schema.sql"""
-    with open(os.path.join(__location__, 'schema.sql')) as f:
+    with open(Path(__location__, 'schema.sql')) as f:
         sql_script = f.read()
         db.executescript(sql_script)
-
-
-def libraries_paths(*dirs: [str]) -> Iterable[str]:
-    """Returns the paths of all the kicad symbol libraries
-    contained within the given directories"""
-
-    return chain.from_iterable(
-        (
-            os.path.join(d, f)
-            for f in os.listdir(d) if f.endswith('.kicad_sym')
-        )
-        for d in dirs
-    )
 
 
 def insert_library(lib: SymbolLib, db: sqlite3.Connection) -> int:
@@ -41,7 +29,7 @@ def insert_library(lib: SymbolLib, db: sqlite3.Connection) -> int:
     and add them to the database supplied by the connection.
     Returns the number of symbols processed."""
 
-    library_name = os.path.split(lib.filePath)[1].rsplit('.', 1)[0]
+    library_name = Path(lib.filePath).parts[-1].rsplit('.', 1)[0]
 
     for symbol in lib.symbols:
         insert_symbol(symbol, library_name, db)
@@ -143,7 +131,9 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
     symbols_added = 0
-    lib_paths = list(libraries_paths(*args.search_directories))
+    lib_paths = list(chain.from_iterable(
+        Path(p).glob('**/*.kicad_sym') for p in args.search_directories
+    ))
 
     with sqlite3.connect(args.sqlite_db) as db:
         print(f'Initialising database {args.sqlite_db}...', end=' ')
