@@ -61,16 +61,14 @@ if __name__ == '__main__':
 
         command = (
             f'kicad-cli sym export svg '
-            f'--layers \'{args.layers}\' '
             f'--output {Path(symbols_output_path, library_name)} '
             f'{slp}'
         )
         print(command)
-        os.system(command)
+        # os.system(command)
 
         command = (
-            f'kicad-cli fp export svg '
-            f'--layers \'{args.layers}\' '
+            f'kicad-cli sym export svg '
             f'--output {Path(symbols_bw_output_path, library_name)} '
             f'--black-and-white '
             f'{slp}'
