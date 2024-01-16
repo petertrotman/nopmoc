@@ -10,6 +10,9 @@ export default defineConfig({
 		exclude: ['@sqlite.org/sqlite-wasm']
 	},
 	server: {
+		fs: {
+			allow: ['static']
+		},
 		headers: {
 			'Cross-Origin-Opener-Policy': 'same-origin',
 			'Cross-Origin-Embedder-Policy': 'require-corp'
