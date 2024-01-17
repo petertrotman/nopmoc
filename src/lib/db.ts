@@ -81,10 +81,10 @@ class Db {
 		const promiser = await this.promiser as typeof PromiserExec;
 		const defaultOpts = { sql, returnValue: 'resultRows' };
 		const queryOpts = Object.assign(defaultOpts, opts);
-		return new Promise((resolve) =>
+		return new Promise((resolve, reject) =>
 			promiser('exec', queryOpts)
 				.then(({ result }) => resolve(result.resultRows))
-				.catch(e => { throw e; })
+				.catch(reject)
 		);
 	}
 };
