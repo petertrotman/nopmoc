@@ -6,6 +6,7 @@ from kiutils.symbol import SymbolLib, Symbol, SymbolPin
 from kiutils.footprint import Footprint
 from pathlib import Path
 import argparse
+import datetime
 import os
 import sqlite3
 
@@ -48,6 +49,10 @@ def init_db(db: sqlite3.Connection) -> None:
             description TEXT,
             tags TEXT,
             pads INTEGER
+        );
+        CREATE TABLE IF NOT EXISTS
+        nopmoc(
+            created_at TEXT
         );
     """)
 
@@ -241,3 +246,8 @@ if __name__ == '__main__':
                 insert_footprint(Footprint.from_file(fp), library_name, db)
 
             print(f'complete: {len(footprint_paths)} footprints added')
+
+        db.execute(
+            "INSERT INTO nopmoc (created_at) VALUES (?)",
+            (datetime.datetime.utcnow().isoformat(),)
+        )
