@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { sqlite3Worker1Promiser } from '@sqlite.org/sqlite-wasm';
-import type { ExecOptions, Sqlite3Worker1Promiser, PromiserClose, PromiserOpen,  PromiserExport, PromiserConfigGet, PromiserExec} from '@sqlite.org/sqlite-wasm';
+import type { ExecOptions, Sqlite3Worker1Promiser, PromiserClose, PromiserOpen, PromiserExport, PromiserConfigGet, PromiserExec } from '@sqlite.org/sqlite-wasm';
 declare module '@sqlite.org/sqlite-wasm' {
 	type Sqlite3Worker1PromiserConfig = {
 		onready: () => void;
@@ -16,16 +16,16 @@ declare module '@sqlite.org/sqlite-wasm' {
 	type PromiserCloseResult = { type: 'close', result: { filename: string | undefined } };
 	function PromiserClose(type: 'close', args: { unlink?: boolean }): Promise<PromiserCloseResult>;
 
-	type PromiserConfigGetResult = { type: 'config-get', result: { version: string; bigIntEnabled: boolean; vfsList: any } };
+	type PromiserConfigGetResult = { type: 'config-get', result: { version: string, bigIntEnabled: boolean, opfsEnabled: boolean, vfsList: any } };
 	function PromiserConfigGet(type: 'config-get', args?: object): Promise<PromiserConfigGetResult>;
 
-	type PromiserExecResult = { type: 'exec'; result: ExecOptions };
+	type PromiserExecResult = { type: 'exec', result: ExecOptions };
 	function PromiserExec(type: 'exec', args: string | ExecOptions): Promise<PromiserExecResult>;
 
-	type PromiserExportResult = { type: 'export'; result: { byteArray: Uint8Array; filename: string; mimetype: string } };
+	type PromiserExportResult = { type: 'export', result: { byteArray: Uint8Array, filename: string, mimetype: string } };
 	function PromiserExport(type: 'export', args?: object): Promise<PromiserExportResult>;
 
-	type PromiserOpenResult = { type: 'open', result: { filename: string; dbId: string; persistent: boolean; vfs: string } };
+	type PromiserOpenResult = { type: 'open', result: { filename: string, dbId: string, persistent: boolean, vfs: string } };
 	function PromiserOpen(type: 'open', args: { filename: string; vfs?: string }): Promise<PromiserOpenResult>;
 
 	type Sqlite3Worker1Promiser =
@@ -74,6 +74,18 @@ class Db {
 	async exec(execArg: string | ExecOptions) {
 		const promiser = await this.promiser as typeof PromiserExec;
 		return promiser('exec', execArg);
+	}
+
+	async query(sql: string, opts?: ExecOptions) {
+		/* utility method for simple queries - automates use of exec */
+		const promiser = await this.promiser as typeof PromiserExec;
+		const defaultOpts = { sql, returnValue: 'resultRows' };
+		const queryOpts = Object.assign(defaultOpts, opts);
+		return new Promise((resolve) =>
+			promiser('exec', queryOpts)
+				.then(({ result }) => resolve(result.resultRows))
+				.catch(e => { throw e; })
+		);
 	}
 };
 
