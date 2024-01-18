@@ -11,6 +11,9 @@
     DbNotInitialised,
     InitialiseDb,
     UnknownErrorOccurred,
+    DatabaseDownloaded,
+    IndicesCreated,
+    VirtualTablesCreated,
     Ready,
   }
 
@@ -52,8 +55,9 @@
   }
 
   let bytesRead = 0;
+  let bytesLength: number | undefined = undefined;
 
-  async function initialiseDb() {
+  async function downloadDb() {
     const directoryHandle = await navigator.storage.getDirectory();
     const fileHandle = await directoryHandle.getFileHandle(DB_FILE_NAME, { create: true });
 
@@ -61,10 +65,13 @@
     if (!response.ok || !response.body) {
       throw new Error('fetch error', { cause: response.statusText });
     }
+    const contentLength = response.headers.get('content-length');
+    bytesLength = contentLength ? parseInt(contentLength) : undefined;
+    bytesRead = 0;
 
-    const [checkReadableStream, pipeReadablStream] = response.body.tee();
+    const [checkReadableStream, pipeReadableStream] = response.body.tee();
     let pipeFinished = false;
-    const pipePromise = pipeReadablStream
+    const pipePromise = pipeReadableStream
       .pipeTo(await fileHandle.createWritable({ keepExistingData: false }))
       .then(() => {
         pipeFinished = true;
@@ -85,13 +92,43 @@
       throw new Error('The database could not be initialised.');
     }
 
-    return ProgressState.Ready;
+    return ProgressState.DatabaseDownloaded;
+  }
+
+  async function createIndices() {
+    console.log('creating indexes');
+    db.exec('CREATE INDEX IF NOT EXISTS ix_pin_symbols ON pins (symbol_rowid);');
+    db.exec('CREATE INDEX IF NOT EXISTS ix_pin_numbers ON pins (number);');
+    db.exec('CREATE INDEX IF NOT EXISTS ix_footprint_pads ON footprints (pads);');
+    console.log('indexes created');
+
+    return ProgressState.IndicesCreated;
+  }
+
+  async function createVirtualTables() {
+    console.log('creating virtual tables');
+    db.exec(`
+    CREATE VIRTUAL TABLE IF NOT EXISTS vt_symbols
+    USING fts5(name, library, keywords, description, content='symbols');
+    `);
+    db.exec(`
+    CREATE VIRTUAL TABLE IF NOT EXISTS vt_pins
+    USING fts5(name, content='pins');
+    `);
+    db.exec(`
+    CREATE VIRTUAL TABLE IF NOT EXISTS vt_footprints
+    USING fts5(name, library, description, tags, content='footprints');
+    `);
+    db.exec(`INSERT INTO vt_symbols(vt_symbols) VALUES ('rebuild');`);
+    db.exec(`INSERT INTO vt_pins(vt_pins) VALUES ('rebuild');`);
+    db.exec(`INSERT INTO vt_footprints(vt_footprints) VALUES ('rebuild');`);
+    console.log('created virtual tables');
+
+    return ProgressState.VirtualTablesCreated;
   }
 
   async function resetDb() {
     await db.close({ unlink: true });
-    const directoryHandle = await navigator.storage.getDirectory();
-    directoryHandle.removeEntry(DB_FILE_NAME);
     return ProgressState.DbNotInitialised;
   }
 
@@ -117,7 +154,16 @@
         run(checkExistingDb).then(step);
         break;
       case ProgressState.InitialiseDb:
-        run(initialiseDb).then(step);
+        run(downloadDb).then(step);
+        break;
+      case ProgressState.DatabaseDownloaded:
+        run(createIndices).then(step);
+        break;
+      case ProgressState.IndicesCreated:
+        run(createVirtualTables).then(step);
+        break;
+      case ProgressState.VirtualTablesCreated:
+        progressState = ProgressState.Ready;
         break;
       default:
         break;
@@ -127,38 +173,61 @@
   step();
 </script>
 
-<button
-  class="btn"
-  on:click={() => {
-    run(resetDb).then(step);
-  }}>Reset</button
->
 {#if progressState == ProgressState.OPFSUnavailable}
-  <p>OPFS is disabled.</p>
-  <p>
-    Please try <a href={window.location.toString()} on:click={() => location.reload()}
-      >reloading the page.</a
-    >
-  </p>
+  <div role="alert" class="alert alert-error">
+    <p class="my-0">
+      OPFS is disabled. Please try <a
+        href={window.location.toString()}
+        on:click={() => location.reload()}>reloading the page.</a
+      >
+    </p>
+  </div>
 {/if}
+
 {#if progressState == ProgressState.DbNotInitialised}
-  <p>The database has not been initialised, would you like to do that now?</p>
-  <p>
-    This will store the database in your browser. The database is about 50MB in size so it may take
-    a while.
-  </p>
-  <button
-    class="btn btn-secondary"
-    on:click={() => {
-      progressState = ProgressState.InitialiseDb;
-      step();
-    }}>Begin</button
-  >
+  <div role="alert" class="alert alert-warning">
+    <p class="my-0">
+      The database has not been initialised, would you like to do that now? It is a ~50MB download
+    </p>
+    <button
+      class="btn btn-secondary"
+      on:click={() => {
+        progressState = ProgressState.InitialiseDb;
+        step();
+      }}>Begin</button
+    >
+  </div>
 {/if}
-{#if progressState == ProgressState.InitialiseDb}
-  <p>Initialising DB...</p>
-  <p>{bytesRead} bytes read.</p>
+
+{#if progressState == ProgressState.InitialiseDb || progressState == ProgressState.DatabaseDownloaded || progressState == ProgressState.IndicesCreated}
+  <div role="alert" class="alert alert-warning">
+    <p class="my-0">
+      Downloading... {#if bytesLength}{((bytesRead * 100) / bytesLength).toFixed(0)}%{/if}
+    </p>
+    {#if progressState == ProgressState.DatabaseDownloaded || progressState == ProgressState.IndicesCreated}
+      <p>Creating indices...</p>
+    {/if}
+    {#if progressState == ProgressState.IndicesCreated}
+      <p>Creating full text search tables...</p>
+    {/if}
+  </div>
 {/if}
+
+{#if progressState == ProgressState.UnknownErrorOccurred}
+  <div role="alert" class="alert alert-error">
+    <p class="my-0">An unknown error occurred.</p>
+  </div>
+{/if}
+
 {#if progressState == ProgressState.Ready}
+  <div role="alert" class="alert alert-success">
+    <p class="my-0">Database is ready</p>
+    <button
+      class="btn btn-secondary"
+      on:click={() => {
+        run(resetDb).then(step);
+      }}>Reset</button
+    >
+  </div>
   <slot />
 {/if}

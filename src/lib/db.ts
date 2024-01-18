@@ -76,13 +76,12 @@ class Db {
 		return promiser('exec', execArg);
 	}
 
-	async query(sql: string, opts?: ExecOptions) {
+	async query(sql: string, ...bindValues: any[])  {
 		/* utility method for simple queries - automates use of exec */
 		const promiser = await this.promiser as typeof PromiserExec;
-		const defaultOpts = { sql, returnValue: 'resultRows' };
-		const queryOpts = Object.assign(defaultOpts, opts);
+		const opts = { sql, bind: bindValues, returnValue: 'resultRows' };
 		return new Promise((resolve, reject) =>
-			promiser('exec', queryOpts)
+			promiser('exec', opts as ExecOptions)
 				.then(({ result }) => resolve(result.resultRows))
 				.catch(reject)
 		);
