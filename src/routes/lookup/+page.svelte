@@ -1,23 +1,25 @@
 <script lang="ts">
   import db from '$lib/db';
+  import debouncePromise from '$lib/debouncePromise';
+  import unwrapPromise from '$lib/unwrapPromise';
 
   let numberOfPins: number;
+  let selectedFootprintLibrary: string | null = null;
 
-  let footprintLibraries: Array<string>;
-
-  let debounceTimeoutId: number | undefined;
-  function debounce(fn: () => unknown, delay = 2000) {
-    clearTimeout(debounceTimeoutId);
-    debounceTimeoutId = setTimeout(fn, delay);
-  }
+  $: footprintLibraries = unwrapPromise(
+    debouncePromise(() =>
+      db.query(`
+      SELECT DISTINCT library FROM footprints
+      ORDER BY library ASC;
+    `),
+    ),
+  );
 
   async function updateOptions() {
     if (!numberOfPins) return;
     db.query('select distinct library from footprints order by library asc;').then((rows) => {
       footprintLibraries = rows as Array<string>;
     });
-    await db.query('drop table if exists test;');
-    console.log(await db.query('create virtual table test using fts5(test1, test2);'));
   }
 </script>
 
