@@ -1,8 +1,9 @@
 const debouncePromiseTimeouts: Record<string, { cancel: () => void }> = {};
-export default async function debouncePromise(
-	fn: () => unknown,
-	opts: { delay: number; ref: string; val?: unknown } = { delay: 2000, ref: '' },
-) {
+async function debouncePromise<T>(fn: () => T, opts: { delay?: number; ref?: string; val: T }): Promise<T>
+async function debouncePromise<T>(
+	fn: () => T,
+	opts: { delay?: number; ref?: string; val?: T } = { delay: 2000, ref: '' },
+): Promise<T | undefined> {
 	/*
 	* debouncePromise returns a promise that will 
 	* resolve with the return value of fn() after opts.delay
@@ -24,3 +25,5 @@ export default async function debouncePromise(
 		}};
 	});
 }
+
+export default debouncePromise;

@@ -251,3 +251,10 @@ if __name__ == '__main__':
             "INSERT INTO nopmoc (created_at) VALUES (?)",
             (datetime.datetime.utcnow().isoformat(),)
         )
+
+        # https://www.npmjs.com/package/sqlite-wasm-http
+        # db.executescript("""
+        #     PRAGMA JOURNAL_MODE = DELETE;
+        #     PRAGMA page_size = 1024;
+        #     VACUUM;
+        # """)
